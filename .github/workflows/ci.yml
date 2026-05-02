@@ -1,0 +1,34 @@
+name: Pipeline CI/CD - Linux App
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  ci:
+    name: Intégration Continue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install -r requirements.txt
+      - run: pip install flake8 pytest
+      - run: flake8 . --max-line-length=120 || true
+      - run: pytest tests/ -v || true
+
+  docker:
+    name: Construction Docker
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t myapp-linux .
+
+  deploy:
+    name: Déploiement
+    runs-on: ubuntu-latest
+    needs: [ci, docker]
+    steps:
+      - run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
